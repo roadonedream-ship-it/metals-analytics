@@ -1,4 +1,5 @@
 import { Star } from 'lucide-react';
+import DataStatusBadge from '@/components/common/DataStatusBadge';
 import Delta from '@/components/common/Delta';
 import { cn } from '@/lib/cn';
 import { formatPercent, formatPrice, formatPriceChange } from '@/lib/format';
@@ -15,10 +16,11 @@ interface QuotesTableProps {
 export default function QuotesTable({ quotes, emptyText, isFavorite, onToggleFavorite, onSelect }: QuotesTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[520px] border-collapse text-sm">
+      <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-ink-800 text-left text-xs font-medium uppercase tracking-[0.12em] text-ink-400">
             <th scope="col" className="px-5 py-3 font-medium">Металл</th>
+            <th scope="col" className="px-5 py-3 font-medium">Статус</th>
             <th scope="col" className="px-5 py-3 text-right font-medium">Цена</th>
             <th scope="col" className="px-5 py-3 text-right font-medium">Изменение</th>
             <th scope="col" className="px-5 py-3 text-right font-medium">Изменение %</th>
@@ -27,7 +29,7 @@ export default function QuotesTable({ quotes, emptyText, isFavorite, onToggleFav
         <tbody>
           {quotes.length === 0 && (
             <tr>
-              <td colSpan={4} className="px-5 py-10 text-center text-sm text-ink-400">
+              <td colSpan={5} className="px-5 py-10 text-center text-sm text-ink-400">
                 {emptyText}
               </td>
             </tr>
@@ -60,6 +62,9 @@ export default function QuotesTable({ quotes, emptyText, isFavorite, onToggleFav
                     <span className="font-medium text-ink-100">{quote.metal.name}</span>
                     <span className="text-ink-500">{quote.metal.symbol}</span>
                   </div>
+                </td>
+                <td className="px-5 py-4">
+                  <DataStatusBadge status={quote.dataStatus} />
                 </td>
                 <td className="px-5 py-4 text-right font-medium tabular-nums text-ink-100">
                   {formatPrice(quote.price)}

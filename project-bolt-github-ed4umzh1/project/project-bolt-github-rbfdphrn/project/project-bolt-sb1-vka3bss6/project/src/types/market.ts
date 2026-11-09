@@ -1,4 +1,4 @@
-export type PeriodKey = '1D' | '1W' | '1M' | '3M' | '1Y' | '5Y';
+export type PeriodKey = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y';
 
 export type MetalCategoryId =
   | 'non-ferrous'
@@ -52,6 +52,8 @@ export interface MetalQuote {
   low: number;
   average: number;
   series: PricePoint[];
+  dataStatus: DataStatus;
+  sourceName: string;
 }
 
 export interface PeriodConfig {
@@ -73,6 +75,10 @@ export type MarketType =
 
 export type DataStatus = 'live' | 'cached' | 'demo' | 'unavailable';
 
+export type SourceStatus = 'pending' | 'connected' | 'rate_limited' | 'error' | 'unavailable' | 'demo';
+
+export type ValidationStatus = 'valid' | 'suspect' | 'invalid' | 'stale';
+
 export interface PriceSource {
   id: string;
   name: string;
@@ -85,33 +91,41 @@ export interface PriceSource {
 export interface PriceQuoteRecord {
   sourceName: string;
   sourceUrl: string;
+  sourceId: string;
   metalId: string;
   price: number;
   currency: string;
   unit: string;
   marketType: MarketType;
   region: string;
+  exchangeName: string | null;
+  grade: string | null;
+  productForm: string | null;
+  dataStatus: DataStatus;
+  validationStatus: ValidationStatus;
+  qualityScore: number;
   timestamp: number;
   retrievedAt: number;
-  dataStatus: DataStatus;
-  qualityScore: number;
+  attribution: string;
 }
-
-export type SourceStatus = 'pending' | 'connected' | 'error' | 'unavailable';
 
 export interface AveragePriceResult {
   weightedAverage: number | null;
   simpleAverage: number | null;
+  trimmedMean: number | null;
   min: number | null;
   max: number | null;
   median: number | null;
+  standardDeviation: number | null;
+  dispersion: number | null;
   quotationCount: number;
   sourceCount: number;
   confidence: 'high' | 'medium' | 'low' | 'none';
   computedAt: number;
+  outliers: number[];
 }
 
-export type CurrencyCode = 'USD' | 'EUR' | 'RUB' | 'CNY' | 'SEK';
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'RUB' | 'CNY' | 'SEK';
 
 export type UnitCode = 'ton' | 'kg' | 'g' | 'ozt' | 'lb';
 
@@ -120,6 +134,8 @@ export interface ExchangeRate {
   quote: CurrencyCode;
   rate: number;
   updatedAt: number;
+  origin: string;
+  dataStatus: DataStatus;
 }
 
 export type SortKey = 'name' | 'price' | 'change' | 'changePct';
@@ -132,4 +148,15 @@ export interface MarketIndex {
   categoryId: MetalCategoryId | 'all';
   series: PricePoint[];
   changePct: number;
+}
+
+export interface SourceIntegration extends PriceSource {
+  status: SourceStatus;
+  lastSuccessAt: number | null;
+  lastError: string | null;
+  apiEndpoint: string;
+  apiKeyRequired: boolean;
+  attribution: string;
+  license: string;
+  freeTierLimit: string;
 }

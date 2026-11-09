@@ -1,5 +1,12 @@
 import { supabase } from '@/lib/supabase';
-import type { CurrencyCode, DataStatus, MarketType, PriceQuoteRecord, SourceStatus } from '@/types/market';
+import type {
+  CurrencyCode,
+  DataStatus,
+  MarketType,
+  PriceQuoteRecord,
+  SourceStatus,
+  ValidationStatus,
+} from '@/types/market';
 import type { SourceStatusRow } from '@/services/sources';
 
 export interface UpdateLogRow {
@@ -45,6 +52,11 @@ function asNumber(value: unknown): number {
   return parsed;
 }
 
+function asNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  return asNumber(value);
+}
+
 function asTimestamp(value: unknown): number {
   const parsed = Date.parse(asString(value));
   if (Number.isNaN(parsed)) throw new Error('Неожиданный формат даты.');
@@ -83,6 +95,21 @@ export async function fetchSourceRows(): Promise<SourceStatusRow[]> {
     lastSuccessAt: asNullableTimestamp(row.last_success_at),
     lastError: asNullableString(row.last_error),
   }));
+}
+
+export async function fetchSourceCoverage(): Promise<Set<string>> {
+  const { data, error } = await getClient()
+    .from('metal_source_coverage')
+    .select('metal_id, source_id');
+  if (error) fail(error.message);
+
+  const coverage = new Set<string>();
+  for (const row of asArray(data)) {
+    const metalId = asString(row.metal_id);
+    const sourceId = asString(row.source_id);
+    coverage.add(`${metalId}-${sourceId}`);
+  }
+  return coverage;
 }
 
 export async function fetchUpdateLogs(limit = 10): Promise<UpdateLogRow[]> {
@@ -128,7 +155,7 @@ export async function fetchQuotationRecords(metalId: string): Promise<PriceQuote
   const { data, error } = await getClient()
     .from('price_quotations')
     .select(
-      'metal_id, price, currency, unit, region, market_type, quality_score, data_status, quoted_at, retrieved_at, data_sources(name, url)'
+      'metal_id, source_id, original_price, original_currency, original_unit, normalized_price, normalized_currency, normalized_unit, grade, product_form, region, market_type, exchange_name, quality_score, data_status, validation_status, quoted_at, retrieved_at, source_url, attribution, data_sources(name, url)'
     )
     .eq('metal_id', metalId)
     .order('quoted_at', { ascending: false })
@@ -141,16 +168,129 @@ export async function fetchQuotationRecords(metalId: string): Promise<PriceQuote
     return {
       sourceName: asString(source.name),
       sourceUrl: asString(source.url),
+      sourceId: asString(row.source_id),
       metalId: asString(row.metal_id),
-      price: asNumber(row.price),
-      currency: asString(row.currency) as CurrencyCode,
-      unit: asString(row.unit),
+      price: asNumber(row.normalized_price),
+      originalPrice: asNumber(row.original_price),
+      originalCurrency: asString(row.original_currency) as CurrencyCode,
+      originalUnit: asString(row.original_unit),
+      currency: asString(row.normalized_currency) as CurrencyCode,
+      unit: asString(row.normalized_unit),
       marketType: asString(row.market_type) as MarketType,
       region: asString(row.region),
+      exchangeName: asNullableString(row.exchange_name),
+      grade: asNullableString(row.grade),
+      productForm: asNullableString(row.product_form),
+      dataStatus: asString(row.data_status) as DataStatus,
+      validationStatus: asString(row.validation_status) as ValidationStatus,
+      qualityScore: asNumber(row.quality_score),
       timestamp: asTimestamp(row.quoted_at),
       retrievedAt: asTimestamp(row.retrieved_at),
-      dataStatus: asString(row.data_status) as DataStatus,
-      qualityScore: asNumber(row.quality_score),
-    };
+      attribution: asString(row.attribution),
+    } as PriceQuoteRecord & { originalPrice: number; originalCurrency: CurrencyCode; originalUnit: string };
   });
+}
+
+export async function fetchAllLiveQuotations(): Promise<PriceQuoteRecord[]> {
+  const { data, error } = await getClient()
+    .from('price_quotations')
+    .select(
+      'metal_id, source_id, original_price, original_currency, original_unit, normalized_price, normalized_currency, normalized_unit, grade, product_form, region, market_type, exchange_name, quality_score, data_status, validation_status, quoted_at, retrieved_at, source_url, attribution, data_sources(name, url)'
+    )
+    .eq('data_status', 'live')
+    .order('quoted_at', { ascending: false });
+  if (error) fail(error.message);
+
+  const rows = asArray(data);
+  const seen = new Set<string>();
+  const result: PriceQuoteRecord[] = [];
+
+  for (const row of rows) {
+    const metalId = asString(row.metal_id);
+    const sourceId = asString(row.source_id);
+    if (seen.has(metalId)) continue;
+    seen.add(metalId);
+
+    const source = row.data_sources as Row | null;
+    if (!source) continue;
+
+    result.push({
+      sourceName: asString(source.name),
+      sourceUrl: asString(source.url),
+      sourceId,
+      metalId,
+      price: asNumber(row.normalized_price),
+      originalPrice: asNumber(row.original_price),
+      originalCurrency: asString(row.original_currency) as CurrencyCode,
+      originalUnit: asString(row.original_unit),
+      currency: asString(row.normalized_currency) as CurrencyCode,
+      unit: asString(row.normalized_unit),
+      marketType: asString(row.market_type) as MarketType,
+      region: asString(row.region),
+      exchangeName: asNullableString(row.exchange_name),
+      grade: asNullableString(row.grade),
+      productForm: asNullableString(row.product_form),
+      dataStatus: asString(row.data_status) as DataStatus,
+      validationStatus: asString(row.validation_status) as ValidationStatus,
+      qualityScore: asNumber(row.quality_score),
+      timestamp: asTimestamp(row.quoted_at),
+      retrievedAt: asTimestamp(row.retrieved_at),
+      attribution: asString(row.attribution),
+    } as PriceQuoteRecord & { originalPrice: number; originalCurrency: CurrencyCode; originalUnit: string });
+  }
+
+  return result;
+}
+
+export async function fetchPriceHistory(
+  metalId: string,
+  sourceId: string
+): Promise<{ date: number; open: number; high: number; low: number; close: number }[]> {
+  const { data, error } = await getClient()
+    .from('price_history')
+    .select('trade_date, open, high, low, close, currency, unit, data_status')
+    .eq('metal_id', metalId)
+    .eq('source_id', sourceId)
+    .order('trade_date', { ascending: true })
+    .limit(365);
+  if (error) fail(error.message);
+
+  return asArray(data).map((row) => ({
+    date: asTimestamp(row.trade_date),
+    open: asNumber(row.open),
+    high: asNumber(row.high),
+    low: asNumber(row.low),
+    close: asNumber(row.close),
+  }));
+}
+
+export async function triggerDataCollection(): Promise<{ status: string; rowsWritten: number; errors: string[] }> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+  if (!supabaseUrl || !anonKey) {
+    throw new Error('Supabase не настроен.');
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/collect-market-data`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${anonKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Сервер вернул ошибку ${response.status}`);
+  }
+
+  const result = await response.json();
+  if (!result || typeof result.status !== 'string') {
+    throw new Error('Неожиданный ответ от сервера.');
+  }
+
+  return {
+    status: result.status,
+    rowsWritten: result.rowsWritten ?? 0,
+    errors: result.errors ?? [],
+  };
 }

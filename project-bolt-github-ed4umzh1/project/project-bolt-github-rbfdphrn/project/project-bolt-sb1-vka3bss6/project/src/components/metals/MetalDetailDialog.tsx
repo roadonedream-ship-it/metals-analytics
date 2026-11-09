@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Star, X } from 'lucide-react';
+import DataStatusBadge from '@/components/common/DataStatusBadge';
 import Delta from '@/components/common/Delta';
-import DemoBadge from '@/components/common/DemoBadge';
 import PeriodSwitcher from '@/components/common/PeriodSwitcher';
 import PriceChart from '@/components/charts/PriceChart';
 import PriceConverter from '@/components/metals/PriceConverter';
@@ -11,7 +11,8 @@ import { SUPABASE_CONFIGURED } from '@/lib/supabase';
 import { formatDateTime, formatPercent, formatPrice, formatPriceChange } from '@/lib/format';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { fetchQuotationRecords } from '@/services/database';
-import { buildQuote } from '@/services/market';
+import { buildHybridQuote } from '@/services/liveData';
+import type { LiveMarketData } from '@/services/liveData';
 import { cn } from '@/lib/cn';
 import type { Metal, PeriodKey } from '@/types/market';
 
@@ -22,6 +23,7 @@ interface MetalDetailDialogProps {
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onClose: () => void;
+  liveData?: LiveMarketData | null;
 }
 
 export default function MetalDetailDialog({
@@ -31,9 +33,14 @@ export default function MetalDetailDialog({
   isFavorite,
   onToggleFavorite,
   onClose,
+  liveData,
 }: MetalDetailDialogProps) {
   const [period, setPeriod] = useState<PeriodKey>(initialPeriod);
-  const quote = useMemo(() => buildQuote(metal, period, updatedAt), [metal, period, updatedAt]);
+  const liveMetalData = liveData?.quotes.get(metal.id) ?? null;
+  const quote = useMemo(
+    () => buildHybridQuote(metal, period, updatedAt, liveMetalData),
+    [metal, period, updatedAt, liveMetalData]
+  );
   const quotations = useAsyncData(() => fetchQuotationRecords(metal.id), metal.id, SUPABASE_CONFIGURED);
   const titleId = useId();
 
@@ -44,6 +51,8 @@ export default function MetalDetailDialog({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  const unitLabel = metal.unit === 'ozt' ? 'тр. унц.' : metal.unit === 'ton' ? 'т' : metal.unit === 'lb' ? 'фунт' : 'кг';
 
   const tiles = [
     { label: 'Максимум', value: formatPrice(quote.high) },
@@ -56,8 +65,12 @@ export default function MetalDetailDialog({
     { label: 'Символ', value: metal.symbol },
     { label: 'Атомный номер', value: metal.atomicNumber === null ? '—' : String(metal.atomicNumber) },
     { label: 'Категория', value: CATEGORY_MAP[metal.categoryId].name },
-    { label: 'Единица измерения', value: 'USD за кг' },
+    { label: 'Единица измерения', value: `USD за ${unitLabel}` },
   ];
+
+  const sourceInfo = liveMetalData
+    ? `Источник: ${liveMetalData.sourceName}${liveMetalData.exchangeName ? `, ${liveMetalData.exchangeName}` : ''}. Данные в реальном времени (LIVE).`
+    : 'Источник данных: демонстрационный генератор. Цены не являются реальными котировками и не предназначены для торговых решений.';
 
   return (
     <div
@@ -81,6 +94,7 @@ export default function MetalDetailDialog({
               <span className="rounded-md bg-ink-800 px-2 py-0.5 text-xs font-medium text-ink-300">
                 {metal.symbol}
               </span>
+              <DataStatusBadge status={quote.dataStatus} />
             </div>
             <p className="mt-1 text-sm text-ink-400">{CATEGORY_MAP[metal.categoryId].name}</p>
           </div>
@@ -113,12 +127,11 @@ export default function MetalDetailDialog({
             <div>
               <div className="flex items-center gap-2.5">
                 <span className="text-xs font-medium uppercase tracking-[0.12em] text-ink-400">Текущая цена</span>
-                <DemoBadge />
               </div>
               <p className="mt-2 text-4xl font-semibold tabular-nums tracking-tight text-ink-100">
                 {formatPrice(quote.price)}
               </p>
-              <p className="mt-1 text-xs text-ink-400">за килограмм, USD</p>
+              <p className="mt-1 text-xs text-ink-400">за {unitLabel}, {metal.currency}</p>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <Delta value={quote.changePct} text={formatPercent(quote.changePct)} className="text-base" />
@@ -156,7 +169,7 @@ export default function MetalDetailDialog({
             <PriceSummaryPanel
               state={quotations.state}
               simulatedPrice={quote.price}
-              unit="кг"
+              unit={unitLabel}
               currency={metal.currency}
             />
           </div>
@@ -178,10 +191,7 @@ export default function MetalDetailDialog({
             </dl>
           </div>
 
-          <p className="text-xs leading-relaxed text-ink-400">
-            Источник данных: демонстрационный генератор ALPHA ANALYST. Цены не являются реальными котировками
-            и не предназначены для торговых решений.
-          </p>
+          <p className="text-xs leading-relaxed text-ink-400">{sourceInfo}</p>
         </div>
       </div>
     </div>

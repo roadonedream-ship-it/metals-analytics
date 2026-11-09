@@ -1,13 +1,14 @@
-import { Bot, Gem, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Bot, Gem, TrendingUp, Activity, type LucideIcon } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import DemoBadge from '@/components/common/DemoBadge';
 import { cn } from '@/lib/cn';
 
-export type Section = 'market' | 'metals' | 'ai';
+export type Section = 'market' | 'metals' | 'sources' | 'ai';
 
 const NAV_ITEMS: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: 'market', label: 'Рынок', icon: TrendingUp },
   { id: 'metals', label: 'Металлы', icon: Gem },
+  { id: 'sources', label: 'Источники', icon: Activity },
   { id: 'ai', label: 'ИИ-аналитик', icon: Bot },
 ];
 
@@ -55,7 +56,7 @@ export default function Sidebar({ active, onChange }: SidebarProps) {
       <div className="hidden border-t border-ink-800 p-5 md:block">
         <DemoBadge />
         <p className="mt-3 text-xs leading-relaxed text-ink-400">
-          Все котировки демонстрационные. Они не являются биржевыми ценами и не предназначены для торговых решений.
+          Металлы с источником LIVE используют реальные котировки. Остальные — демонстрационные данные.
         </p>
       </div>
     </aside>

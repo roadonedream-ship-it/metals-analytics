@@ -1,17 +1,113 @@
-import type { PriceSource, MarketType } from '@/types/market';
+import type { PriceSource, MarketType, SourceStatus } from '@/types/market';
 
-export const PRICE_SOURCES: PriceSource[] = [
-  { id: 'lme', name: 'London Metal Exchange', url: 'https://www.lme.com', marketType: 'exchange', region: 'Глобальный', qualityScore: 0.95 },
-  { id: 'comex', name: 'COMEX / CME', url: 'https://www.cmegroup.com', marketType: 'exchange', region: 'США', qualityScore: 0.94 },
-  { id: 'shfe', name: 'Shanghai Futures Exchange', url: 'https://www.shfe.com.cn', marketType: 'exchange', region: 'Китай', qualityScore: 0.92 },
-  { id: 'lbma', name: 'London Bullion Market Association', url: 'https://www.lbma.org.uk', marketType: 'spot', region: 'Глобальный', qualityScore: 0.96 },
-  { id: 'kitco', name: 'Kitco Metals', url: 'https://www.kitco.com', marketType: 'spot', region: 'Глобальный', qualityScore: 0.88 },
-  { id: 'fastmarkets', name: 'Fastmarkets MB', url: 'https://www.fastmarkets.com', marketType: 'wholesale', region: 'Глобальный', qualityScore: 0.90 },
-  { id: 'asian-metal', name: 'Asian Metal', url: 'https://www.asianmetal.com', marketType: 'regional', region: 'Азия', qualityScore: 0.85 },
-  { id: 'metals-api', name: 'MetalsAPI (commercial)', url: 'https://metalsapi.com', marketType: 'spot', region: 'Глобальный', qualityScore: 0.87 },
-  { id: 'scrap-sources', name: 'Региональные источники лома', url: '', marketType: 'scrap', region: 'Региональный', qualityScore: 0.75 },
-  { id: 'raw-sources', name: 'Источники цен на сырье', url: '', marketType: 'raw', region: 'Региональный', qualityScore: 0.78 },
-  { id: 'ferroalloy-sources', name: 'Источники цен на ферросплавы', url: '', marketType: 'wholesale', region: 'Региональный', qualityScore: 0.80 },
+export interface SourceDefinition extends PriceSource {
+  apiEndpoint: string;
+  apiKeyRequired: boolean;
+  attribution: string;
+  license: string;
+  freeTierLimit: string;
+  defaultStatus: SourceStatus;
+}
+
+export const PRICE_SOURCES: SourceDefinition[] = [
+  {
+    id: 'yahoo-finance',
+    name: 'Yahoo Finance (Unofficial)',
+    url: 'https://finance.yahoo.com',
+    apiEndpoint: 'https://query2.finance.yahoo.com/v8/finance/chart',
+    marketType: 'exchange',
+    region: 'США',
+    qualityScore: 0.82,
+    apiKeyRequired: false,
+    attribution: 'Yahoo Finance',
+    license: 'Unofficial — publicly accessible data, no official API license. For demonstration only.',
+    freeTierLimit: 'Без ключа. Неформальные ограничения скорости.',
+    defaultStatus: 'pending',
+  },
+  {
+    id: 'frankfurter',
+    name: 'Frankfurter API (ECB Rates)',
+    url: 'https://frankfurter.app',
+    apiEndpoint: 'https://api.frankfurter.app',
+    marketType: 'spot',
+    region: 'Глобальный',
+    qualityScore: 0.90,
+    apiKeyRequired: false,
+    attribution: 'European Central Bank reference rates via Frankfurter API',
+    license: 'MIT (API), ECB public data. Commercial use permitted.',
+    freeTierLimit: 'Без ключа. Без документированных жёстких лимитов.',
+    defaultStatus: 'pending',
+  },
+  {
+    id: 'lme',
+    name: 'London Metal Exchange',
+    url: 'https://www.lme.com',
+    apiEndpoint: '',
+    marketType: 'exchange',
+    region: 'Глобальный',
+    qualityScore: 0.95,
+    apiKeyRequired: true,
+    attribution: 'LME',
+    license: 'Требуется платная лицензия на данные. Нет бесплатного публичного API.',
+    freeTierLimit: 'Нет бесплатного уровня.',
+    defaultStatus: 'unavailable',
+  },
+  {
+    id: 'comex',
+    name: 'COMEX / CME',
+    url: 'https://www.cmegroup.com',
+    apiEndpoint: '',
+    marketType: 'exchange',
+    region: 'США',
+    qualityScore: 0.94,
+    apiKeyRequired: true,
+    attribution: 'CME Group',
+    license: 'Требуется платная лицензия на данные. Нет бесплатного публичного API.',
+    freeTierLimit: 'Нет бесплатного уровня.',
+    defaultStatus: 'unavailable',
+  },
+  {
+    id: 'shfe',
+    name: 'Shanghai Futures Exchange',
+    url: 'https://www.shfe.com.cn',
+    apiEndpoint: '',
+    marketType: 'exchange',
+    region: 'Китай',
+    qualityScore: 0.92,
+    apiKeyRequired: true,
+    attribution: 'SHFE',
+    license: 'Требуется платная лицензия на данные. Нет бесплатного публичного API.',
+    freeTierLimit: 'Нет бесплатного уровня.',
+    defaultStatus: 'unavailable',
+  },
+  {
+    id: 'lbma',
+    name: 'London Bullion Market Association',
+    url: 'https://www.lbma.org.uk',
+    apiEndpoint: '',
+    marketType: 'spot',
+    region: 'Глобальный',
+    qualityScore: 0.96,
+    apiKeyRequired: true,
+    attribution: 'LBMA',
+    license: 'Требуется платная лицензия на данные. Нет бесплатного публичного API.',
+    freeTierLimit: 'Нет бесплатного уровня.',
+    defaultStatus: 'unavailable',
+  },
+  {
+    id: 'usgs',
+    name: 'USGS Mineral Commodity Data',
+    url: 'https://www.usgs.gov',
+    apiEndpoint: '',
+    marketType: 'wholesale',
+    region: 'США',
+    qualityScore: 0.80,
+    apiKeyRequired: false,
+    attribution: 'U.S. Geological Survey',
+    license: 'Public domain (U.S. Government work). Commercial use permitted.',
+    freeTierLimit: 'Без ключа. Ежегодные/ежемесячные публикации, не в реальном времени.',
+    defaultStatus: 'pending',
+  },
 ];
 
 export const MARKET_TYPE_LABELS: Record<MarketType, string> = {
@@ -22,4 +118,13 @@ export const MARKET_TYPE_LABELS: Record<MarketType, string> = {
   scrap: 'Лом',
   raw: 'Сырье',
   alloy: 'Сплав',
+};
+
+export const SOURCE_STATUS_LABELS: Record<SourceStatus, string> = {
+  pending: 'Ожидает настройки',
+  connected: 'Подключён',
+  rate_limited: 'Ограничен лимитом',
+  error: 'Ошибка',
+  unavailable: 'Недоступен',
+  demo: 'Демо',
 };

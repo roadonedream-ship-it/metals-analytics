@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import DemoBadge from '@/components/common/DemoBadge';
-import { CURRENCY_CODES, CURRENCY_LABELS, UNIT_LABELS, convertPrice } from '@/services/currency';
-import { formatIndex } from '@/lib/format';
+import DataStatusBadge from '@/components/common/DataStatusBadge';
+import { CURRENCY_CODES, CURRENCY_LABELS, UNIT_LABELS, convertPrice, getRateStatus, getRateOrigin, getRateTimestamp } from '@/services/currency';
+import { formatDateTime, formatIndex } from '@/lib/format';
 import type { CurrencyCode, UnitCode } from '@/types/market';
 
 const UNITS: UnitCode[] = ['kg', 'ton', 'g', 'ozt', 'lb'];
@@ -19,12 +19,15 @@ export default function PriceConverter({ pricePerKg, currency }: PriceConverterP
   const [targetUnit, setTargetUnit] = useState<UnitCode>('kg');
 
   const converted = convertPrice(pricePerKg, currency, targetCurrency, 'kg', targetUnit);
+  const rateStatus = getRateStatus();
+  const rateOrigin = getRateOrigin();
+  const rateTs = getRateTimestamp();
 
   return (
     <div className="rounded-xl border border-ink-800 bg-ink-950/60 p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-medium text-ink-200">Пересчёт валюты и единиц</h3>
-        <DemoBadge />
+        <DataStatusBadge status={rateStatus === 'live' ? 'live' : 'demo'} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1.5">
@@ -60,7 +63,9 @@ export default function PriceConverter({ pricePerKg, currency }: PriceConverterP
         {formatIndex(converted)} {CURRENCY_LABELS[targetCurrency]} / {UNIT_LABELS[targetUnit]}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-ink-400">
-Курсы валют зафиксированы в приложении как демонстрационные (индикативные): они не обновляются и не являются актуальными курсами ЦБ или биржи.
+        {rateStatus === 'live'
+          ? `Курсы валют: ${rateOrigin}${rateTs > 0 ? `, обновлено ${formatDateTime(rateTs)}` : ''}.`
+          : 'Курсы валют зафиксированы как демонстрационные (индикативные). Они не обновляются и не являются актуальными курсами ЦБ или биржи.'}
       </p>
     </div>
   );

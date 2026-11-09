@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import DemoBadge from '@/components/common/DemoBadge';
 import SearchInput from '@/components/common/SearchInput';
 import PageHeader from '@/components/layout/PageHeader';
 import MetalCard from '@/components/metals/MetalCard';
@@ -8,7 +7,8 @@ import { CATEGORIES } from '@/data/categories';
 import { METALS } from '@/data/metals';
 import { cn } from '@/lib/cn';
 import type { FavoritesState } from '@/hooks/useFavorites';
-import { buildQuotes } from '@/services/market';
+import { buildHybridQuotes } from '@/services/liveData';
+import type { LiveMarketData } from '@/services/liveData';
 import type { Metal, MetalCategoryId } from '@/types/market';
 
 type CategoryFilter = MetalCategoryId | 'all';
@@ -19,15 +19,20 @@ const CHIP_BASE =
 interface MetalsPageProps {
   updatedAt: Date;
   favorites: FavoritesState;
+  liveData: LiveMarketData | null;
 }
 
-export default function MetalsPage({ updatedAt, favorites }: MetalsPageProps) {
+export default function MetalsPage({ updatedAt, favorites, liveData }: MetalsPageProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [selectedMetal, setSelectedMetal] = useState<Metal | null>(null);
 
-  const quotes = useMemo(() => buildQuotes(METALS, '1M', updatedAt), [updatedAt]);
+  const quotes = useMemo(
+    () => buildHybridQuotes(METALS, '1M', updatedAt, liveData),
+    [updatedAt, liveData]
+  );
+  const liveCount = quotes.filter((q) => q.dataStatus === 'live').length;
   const favoriteCount = useMemo(
     () => quotes.filter((quote) => favorites.isFavorite(quote.metal.id)).length,
     [quotes, favorites]
@@ -56,8 +61,7 @@ export default function MetalsPage({ updatedAt, favorites }: MetalsPageProps) {
     <>
       <PageHeader
         title="Металлы"
-        description="Каталог металлов, сплавов и лома. Выберите металл, чтобы открыть его демонстрационную карточку."
-        actions={<DemoBadge />}
+        description={`Каталог металлов, сплавов и лома. ${liveCount} металлов с реальными котировками (LIVE), остальные — демонстрационные.`}
       />
 
       <div className="mb-6 flex flex-col gap-4">
@@ -139,6 +143,7 @@ export default function MetalsPage({ updatedAt, favorites }: MetalsPageProps) {
           isFavorite={favorites.isFavorite(selectedMetal.id)}
           onToggleFavorite={() => favorites.toggleFavorite(selectedMetal.id)}
           onClose={() => setSelectedMetal(null)}
+          liveData={liveData}
         />
       )}
     </>

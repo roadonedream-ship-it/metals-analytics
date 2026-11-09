@@ -62,6 +62,8 @@ export function buildQuote(metal: Metal, periodKey: PeriodKey, updatedAt: Date):
     low: Math.min(...values),
     average,
     series,
+    dataStatus: 'demo' as const,
+    sourceName: 'METALS ANALYTICS (демо-генератор)',
   };
 }
 

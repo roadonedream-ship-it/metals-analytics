@@ -1,4 +1,5 @@
 import { Star } from 'lucide-react';
+import DataStatusBadge from '@/components/common/DataStatusBadge';
 import Delta from '@/components/common/Delta';
 import { CATEGORY_MAP } from '@/data/categories';
 import { cn } from '@/lib/cn';
@@ -14,6 +15,7 @@ interface MetalCardProps {
 
 export default function MetalCard({ quote, isFavorite, onSelect, onToggleFavorite }: MetalCardProps) {
   const { metal } = quote;
+  const unitLabel = metal.unit === 'ozt' ? 'тр. унц.' : metal.unit === 'ton' ? 'т' : metal.unit === 'lb' ? 'фунт' : 'кг';
   return (
     <div className="group relative flex w-full flex-col rounded-2xl border border-ink-800 bg-ink-900/70 p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-500/40 hover:bg-ink-900 hover:shadow-[0_12px_32px_-16px_rgba(0,199,129,0.35)]">
       <button
@@ -49,8 +51,11 @@ export default function MetalCard({ quote, isFavorite, onSelect, onToggleFavorit
 
       <div className="mt-8 flex items-end justify-between gap-3">
         <div>
-          <p className="text-2xl font-semibold tabular-nums text-ink-100">{formatPrice(quote.price)}</p>
-          <p className="mt-1 text-xs text-ink-400">за кг, USD</p>
+          <div className="flex items-center gap-2">
+            <p className="text-2xl font-semibold tabular-nums text-ink-100">{formatPrice(quote.price)}</p>
+            <DataStatusBadge status={quote.dataStatus} />
+          </div>
+          <p className="mt-1 text-xs text-ink-400">за {unitLabel}, {metal.currency}</p>
         </div>
         <div className="text-right">
           <Delta value={quote.changePct} text={formatPercent(quote.changePct)} className="justify-end" />

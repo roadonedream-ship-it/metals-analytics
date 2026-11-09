@@ -12,6 +12,7 @@ const AXIS_OPTIONS: Record<PeriodKey, Intl.DateTimeFormatOptions> = {
   '1W': { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' },
   '1M': { day: '2-digit', month: '2-digit' },
   '3M': { day: '2-digit', month: '2-digit' },
+  '6M': { month: 'short', year: '2-digit' },
   '1Y': { month: 'short', year: '2-digit' },
   '5Y': { month: 'short', year: '2-digit' },
 };
